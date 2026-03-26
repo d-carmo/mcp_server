@@ -111,6 +111,215 @@ by rmcp's `StreamableHttpService`.
 
 ---
 
+## Testing with `curl`
+
+The examples below cover both transports and exercise tools, resources, and
+prompts. Adapt the tool name, resource URI, and prompt name to whatever you
+have registered.
+
+---
+
+### stdio
+
+The binary reads one JSON-RPC message per line from `stdin` and writes
+responses to `stdout`. Pipe a newline-delimited sequence of messages directly
+to the binary using a here-document.
+
+#### Initialize
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+EOF
+```
+
+#### Confirm initialisation (notification — no response)
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+EOF
+```
+
+#### Tools — list
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/list"}
+EOF
+```
+
+#### Tools — call (`count_lines`)
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"count_lines","arguments":{"path":"/tmp","extension":"rs"}}}
+EOF
+```
+
+#### Resources — list
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"resources/list"}
+EOF
+```
+
+#### Resources — read
+
+Replace the URI with one returned by `resources/list`.
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"file:///config/settings.json"}}
+EOF
+```
+
+#### Prompts — list
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"prompts/list"}
+EOF
+```
+
+#### Prompts — get
+
+Replace the name and arguments with values returned by `prompts/list`.
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"summarise","arguments":{"text":"Hello world"}}}
+EOF
+```
+
+Each response is written to `stdout` on its own line as it is processed.
+Diagnostic/log output goes to `stderr` and will not interfere.
+
+---
+
+### Streamable HTTP
+
+Start the server first:
+
+```bash
+MCP_COMMUNICATION=Streamable_HTTP ./target/release/mcp_server
+```
+
+Every request is a `POST /mcp`. The server returns a `MCP-Session-Id` header
+in the `initialize` response; all subsequent requests must include that header.
+
+#### 1. Initialize — capture the session ID
+
+```bash
+curl -si -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}' \
+  -D /tmp/mcp_headers.txt
+
+# Extract the session ID from the saved headers
+SESSION_ID=$(grep -i 'mcp-session-id' /tmp/mcp_headers.txt | awk '{print $2}' | tr -d '\r\n')
+echo "Session: $SESSION_ID"
+```
+
+#### 2. Confirm initialisation (notification — no response body)
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+```
+
+#### 3. Tools — list
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+#### 4. Tools — call (`count_lines`)
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"count_lines","arguments":{"path":"/tmp","extension":"rs"}}}'
+```
+
+#### 5. Resources — list
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":4,"method":"resources/list"}'
+```
+
+#### 6. Resources — read
+
+Replace the URI with one returned by `resources/list`.
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"file:///config/settings.json"}}'
+```
+
+#### 7. Prompts — list
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":6,"method":"prompts/list"}'
+```
+
+#### 8. Prompts — get
+
+Replace the name and arguments with values returned by `prompts/list`.
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":7,"method":"prompts/get","params":{"name":"summarise","arguments":{"text":"Hello world"}}}'
+```
+
+#### 9. End the session (optional)
+
+```bash
+curl -s -X DELETE http://127.0.0.1:3333/mcp \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID"
+```
+
+---
+
 ## Build
 
 ```bash
