@@ -19,7 +19,7 @@ Supports two transports (selected at runtime via `.env`):
 - [Transports](#transports)
   - [stdio](#stdio)
   - [Streamable HTTP](#streamable-http)
-- [Testing with `curl`](#testing-with-curl)
+- [Testing](#testing)
   - [stdio](#stdio-1)
   - [Streamable HTTP](#streamable-http-1)
 - [Build](#build)
