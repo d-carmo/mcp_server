@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "code-stats": {
+      "command": "/home/erok/github/rust/mcp_server/target/release/mcp_server"
+    }
+  }
+}
+

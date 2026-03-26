@@ -1,0 +1,17 @@
+[package]
+name = "mcp_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+axum = { version = "0.8", features = ["http1", "tokio"], default-features = false }
+dotenvy = "0.15"
+inventory = "0.3"
+rmcp = { version = "1.2.0", features = ["transport-io", "transport-streamable-http-server"] }
+schemars = "1.2.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros", "net", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
