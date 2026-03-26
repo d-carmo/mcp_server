@@ -11,6 +11,26 @@ Supports two transports (selected at runtime via `.env`):
 
 ---
 
+## Contents
+
+- [Architecture](#architecture)
+  - [How auto-discovery works](#how-auto-discovery-works)
+- [Configuration (`.env`)](#configuration-env)
+- [Transports](#transports)
+  - [stdio](#stdio)
+  - [Streamable HTTP](#streamable-http)
+- [Testing with `curl`](#testing-with-curl)
+  - [stdio](#stdio-1)
+  - [Streamable HTTP](#streamable-http-1)
+- [Build](#build)
+- [Adding a new Tool](#adding-a-new-tool)
+  - [Writing tests](#writing-tests)
+- [Adding a new Resource](#adding-a-new-resource)
+- [Adding a new Prompt](#adding-a-new-prompt)
+- [Running tests](#running-tests)
+
+---
+
 ## Architecture
 
 ```
@@ -111,7 +131,7 @@ by rmcp's `StreamableHttpService`.
 
 ---
 
-## Testing with `curl`
+## Testing 
 
 The examples below cover both transports and exercise tools, resources, and
 prompts. Adapt the tool name, resource URI, and prompt name to whatever you
