@@ -8,7 +8,7 @@ anyhow = "1.0"
 axum = { version = "0.8", features = ["http1", "tokio"], default-features = false }
 dotenvy = "0.15"
 inventory = "0.3"
-rmcp = { version = "1.2.0", features = ["transport-io", "transport-streamable-http-server"] }
+rmcp = { version = "1.4.0", features = ["transport-io", "transport-streamable-http-server"] }
 schemars = "1.2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
