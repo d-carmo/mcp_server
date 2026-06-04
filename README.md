@@ -1,5 +1,7 @@
 # mcp_server
 
+[![MCP Badge](https://lobehub.com/badge/mcp/d-carmo-mcp_server)](https://lobehub.com/mcp/d-carmo-mcp_server)]
+
 A modular [Model Context Protocol](https://modelcontextprotocol.io/) server written in Rust.
 
 Supports two transports (selected at runtime via `.env`):
@@ -44,7 +46,8 @@ src/
 │   └── http.rs           # Streamable HTTP transport (Axum + rmcp)
 ├── tools/
 │   ├── mod.rs            # McpTool trait + ToolRegistration + all_tools()
-│   └── count_lines.rs    # Built-in example tool
+│   ├── count_lines.rs    # Counts lines in files by extension
+│   └── query_db.rs       # Executes user-scoped SELECT queries against MySQL
 ├── resources/
 │   └── mod.rs            # McpResource trait + ResourceRegistration + all_resources()
 └── prompts/
@@ -80,6 +83,10 @@ Copy `.env` and edit as needed.  All values have built-in defaults.
 | `MCP_PORT` | `3333` | TCP port for the Streamable HTTP transport |
 | `MCP_LISTENING_ADDRESS` | `127.0.0.1` | Bind address for the Streamable HTTP transport |
 | `MCP_COMMUNICATION` | `stdio` | Transport: `stdio` or `Streamable_HTTP` |
+| `DB_URL` | — | MySQL host (e.g. `localhost`) — required for `query_db` |
+| `DB_NAME` | — | MySQL database name — required for `query_db` |
+| `DB_USER` | — | MySQL username — required for `query_db` |
+| `DB_PASSWORD` | _(empty)_ | MySQL password — required for `query_db` |
 
 Example — run as an HTTP server on all interfaces:
 
@@ -179,6 +186,19 @@ EOF
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
 {"jsonrpc":"2.0","method":"notifications/initialized"}
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"count_lines","arguments":{"path":"/tmp","extension":"rs"}}}
+EOF
+```
+
+#### Tools — call (`query_db`)
+
+Executes a user-scoped SELECT query against MySQL. The query must contain
+`:user_id` exactly once so results are always filtered to the given user.
+
+```bash
+./target/release/mcp_server << 'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl-test","version":"0.0.1"}}}
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"query_db","arguments":{"user_id":"1","query":"SELECT * FROM Entries WHERE user_id = :user_id"}}}
 EOF
 ```
 
@@ -286,17 +306,30 @@ curl -s -X POST http://127.0.0.1:3333/mcp \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"count_lines","arguments":{"path":"/tmp","extension":"rs"}}}'
 ```
 
-#### 5. Resources — list
+#### 5. Tools — call (`query_db`)
+
+Executes a user-scoped SELECT query against MySQL. The query must contain
+`:user_id` exactly once so results are always filtered to the given user.
 
 ```bash
 curl -s -X POST http://127.0.0.1:3333/mcp \
   -H 'Content-Type: application/json' \
   -H 'MCP-Protocol-Version: 2025-11-25' \
   -H "MCP-Session-Id: $SESSION_ID" \
-  -d '{"jsonrpc":"2.0","id":4,"method":"resources/list"}'
+  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"query_db","arguments":{"user_id":"1","query":"SELECT * FROM Entries WHERE user_id = :user_id"}}}'
 ```
 
-#### 6. Resources — read
+#### 7. Resources — list
+
+```bash
+curl -s -X POST http://127.0.0.1:3333/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2025-11-25' \
+  -H "MCP-Session-Id: $SESSION_ID" \
+  -d '{"jsonrpc":"2.0","id":5,"method":"resources/list"}'
+```
+
+#### 8. Resources — read
 
 Replace the URI with one returned by `resources/list`.
 
@@ -305,20 +338,20 @@ curl -s -X POST http://127.0.0.1:3333/mcp \
   -H 'Content-Type: application/json' \
   -H 'MCP-Protocol-Version: 2025-11-25' \
   -H "MCP-Session-Id: $SESSION_ID" \
-  -d '{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"file:///config/settings.json"}}'
+  -d '{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"file:///config/settings.json"}}'
 ```
 
-#### 7. Prompts — list
+#### 9. Prompts — list
 
 ```bash
 curl -s -X POST http://127.0.0.1:3333/mcp \
   -H 'Content-Type: application/json' \
   -H 'MCP-Protocol-Version: 2025-11-25' \
   -H "MCP-Session-Id: $SESSION_ID" \
-  -d '{"jsonrpc":"2.0","id":6,"method":"prompts/list"}'
+  -d '{"jsonrpc":"2.0","id":7,"method":"prompts/list"}'
 ```
 
-#### 8. Prompts — get
+#### 10. Prompts — get
 
 Replace the name and arguments with values returned by `prompts/list`.
 
@@ -330,7 +363,7 @@ curl -s -X POST http://127.0.0.1:3333/mcp \
   -d '{"jsonrpc":"2.0","id":7,"method":"prompts/get","params":{"name":"summarise","arguments":{"text":"Hello world"}}}'
 ```
 
-#### 9. End the session (optional)
+#### 10. End the session (optional)
 
 ```bash
 curl -s -X DELETE http://127.0.0.1:3333/mcp \
